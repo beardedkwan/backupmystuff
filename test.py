@@ -1,5 +1,5 @@
 import os
-from git import Repo, InvalidGitRepositoryError
+from git import Repo, InvalidGitRepositoryError, GitCommandError
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -25,32 +25,48 @@ def parse_config_file():
 
     return config
 
-config = parse_config_file()
-
 # Check if config file exists
 config = parse_config_file()
-if len(config) > 0:
-    # Initialize backups git repository
-    repo = Repo(main_path)
+if config and len(config) > 0 and "remote_name" in config and "remote_url" in config:
+    try:
+        # Initialize backups git repository
+        try:
+            repo = Repo(main_path)
 
-    if os.path.isdir(os.path.join(main_path, ".git")):
-        print("Git repository successfully initialized.")
-    else:
-        print("Failed to initialize Git repository.")
+        except InvalidGitRepositoryError:
+            print("Initializing a new Git repository...")
+            repo = Repo.init(main_path)
 
-    # Add a remote
-    remote_name = config["remote_name"]
-    remote_url = config["remote_url"]
+        # Add a remote
+        remote_name = config["remote_name"]
+        remote_url = config["remote_url"]
 
-    if remote_name not in repo.remotes:
-        repo.create_remote(remote_name, remote_url)
+        if remote_name not in repo.remotes:
+            repo.create_remote(remote_name, remote_url)
+            print(f"Added remote '{remote_name}' with URL '{remote_url}'.")
 
-    # Stage and commit changes
-    repo.index.add("*")
-    repo.index.commit(f"Automated backup")
+        # Stage changes
+        repo.index.add("*")
 
-    # Push to remote repo
-    remote = repo.remote(name=remote_name)
-    remote.push()
+        # Commit changes if there are any
+        if repo.index.diff("HEAD"):
+            repo.index.commit("Automated backup")
+            print("Changes committed.")
 
-    print("Successfully pushed to remote repository.")
+        else:
+            print("No changes to commit.")
+
+        # Push to remote repo
+        remote = repo.remote(name=remote_name)
+        remote.push()
+
+        print("Successfully pushed to remote repository.")
+
+    except GitCommandError as e:
+        print(f"Git command error: {e}")
+
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+else:
+    print("Missing config file or required keys to push to remote repository.")
