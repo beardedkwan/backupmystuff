@@ -2,7 +2,7 @@ from pathlib import Path
 import getpass
 import shutil
 import os
-from git import Repo, InvalidGitRepositoryError
+from git import Repo, InvalidGitRepositoryError, GitCommandError
 
 # CONSTANTS
 # Get logged in user for directory paths
@@ -10,6 +10,9 @@ user = getpass.getuser()
 
 # backupmystuff.py script path
 main_path = os.path.dirname(os.path.abspath(__file__))
+
+# .backups path
+backups_main_path = f"/home/{user}/.backups"
 
 # FUNCTION DEFS
 # get config data
@@ -38,22 +41,52 @@ def parse_config_file():
 '''
 '''
 '''
+PULL FROM GITHUB REPOSITORY
+'''
+'''
+'''
+
+'''
+config = parse_config_file()
+
+git_config_is_good = False
+if config and len(config) > 0 and "remote_name" in config and "remote_url" in config:
+    git_config_is_good = True
+
+if git_config_is_good:
+    try:
+        repo = Repo(backups_main_path)
+
+        # Add a remote
+        remote_name = config["remote_name"]
+
+        if remote_name in repo.remotes:
+            remote = repo.remotes[remote_name]
+            remote.pull()
+
+    except InvalidGitRepositoryError:
+        print("Git repository not initialized, cancelling pull...")
+'''
+
+'''
+'''
+'''
 BACKUP PLASMA CONFIG FILES
 '''
 '''
 '''
 
 # Check if destination directory exists, if not then create it
-mangohud_backup_path = Path(f"/home/{user}/.backups/plasma")
+mangohud_backup_path = Path(f"{backups_main_path}/plasma")
 if not mangohud_backup_path.exists():
-    print(f"'/home/{user}/.backups/plasma/' does not exist. Creating it now.")
+    print(f"'{backups_main_path}/plasma/' does not exist. Creating it now.")
     try:
         mangohud_backup_path.mkdir(parents = True, exist_ok = True)
     except OSError as e:
         print(f"Error creating directory: {e}")
 
 # Get list of plasma cfg filenames from .config directory
-cfg_path = Path(f"/home/{user}/.config")
+cfg_path = Path(backups_main_path)
 files = [file.name for file in cfg_path.iterdir() if file.is_file() and "plasma" in file.name]
 
 # Plasma backup readme content
@@ -168,30 +201,55 @@ PUSH TO GITHUB REPOSITORY
 '''
 '''
 
-# Check if config file exists
-config = parse_config_file()
-if len(config) > 0:
-    # Initialize backups git repository
-    repo = Repo(main_path)
+'''
+if git_config_is_good:
+    try:
+        # Initialize backups git repository
+        try:
+            repo = Repo(backups_main_path)
+        except InvalidGitRepositoryError:
+            print("Initializing a new Git repository...")
+            repo = Repo.init(backups_main_path)
 
-    if os.path.isdir(os.path.join(main_path, ".git")):
-        print("Git repository successfully initialized.")
-    else:
-        print("Failed to initialize Git repository.")
+        # Add a remote
+        remote_name = config["remote_name"]
+        remote_url = config["remote_url"]
 
-    # Add a remote
-    remote_name = config["remote_name"]
-    remote_url = config["remote_url"]
+        if remote_name not in repo.remotes:
+            repo.create_remote(remote_name, remote_url)
+            print(f"Added remote '{remote_name}' with URL '{remote_url}'.")
 
-    if remote_name not in repo.remotes:
-        repo.create_remote(remote_name, remote_url)
+        # Stage changes
+        repo.git.add(A=True)
 
-    # Stage and commit changes
-    repo.index.add("*")
-    repo.index.commit(f"Automated backup")
+        first_push = False
 
-    # Push to remote repo
-    remote = repo.remote(name=remote_name)
-    remote.push()
+        # Commit changes
+        try:
+            if repo.head.is_valid():
+                if repo.index.diff("HEAD"):
+                    repo.index.commit("Automated backup")
+                    print("Changes committed.")
+                else:
+                    print("No changes to commit.")
+            else:
+                print("New repository detected. Committing all files.")
+                repo.index.commit("Initial commit: Automated backup setup")
+                first_push = True
+        except GitCommandError as e:
+            print(f"Git command error: {e}")
 
-    print("Successfully pushed to remote repository.")
+        # Push to remote repo
+        remote = repo.remote(name=remote_name)
+        if first_push:
+            remote.push(refspec=f"{repo.active_branch.name}:{repo.active_branch.name}", set_upstream=True)
+        else:
+            remote.push()
+
+        print("Successfully pushed to remote repository.")
+    except GitCommandError as e:
+        print(f"Git command error: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+else:
+    print("Missing config file or required keys to push to remote repository.")

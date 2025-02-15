@@ -2,6 +2,7 @@ import os
 from git import Repo, InvalidGitRepositoryError, GitCommandError
 
 main_path = os.path.dirname(os.path.abspath(__file__))
+backup_main_path = "/home/howler1/.backups"
 
 def parse_config_file():
     config = {}
@@ -31,11 +32,11 @@ if config and len(config) > 0 and "remote_name" in config and "remote_url" in co
     try:
         # Initialize backups git repository
         try:
-            repo = Repo(main_path)
+            repo = Repo(backup_main_path)
 
         except InvalidGitRepositoryError:
             print("Initializing a new Git repository...")
-            repo = Repo.init(main_path)
+            repo = Repo.init(backup_main_path)
 
         # Add a remote
         remote_name = config["remote_name"]
