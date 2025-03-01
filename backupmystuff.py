@@ -41,36 +41,6 @@ def parse_config_file():
 '''
 '''
 '''
-PULL FROM GITHUB REPOSITORY
-'''
-'''
-'''
-
-'''
-config = parse_config_file()
-
-git_config_is_good = False
-if config and len(config) > 0 and "remote_name" in config and "remote_url" in config:
-    git_config_is_good = True
-
-if git_config_is_good:
-    try:
-        repo = Repo(backups_main_path)
-
-        # Add a remote
-        remote_name = config["remote_name"]
-
-        if remote_name in repo.remotes:
-            remote = repo.remotes[remote_name]
-            remote.pull()
-
-    except InvalidGitRepositoryError:
-        print("Git repository not initialized, cancelling pull...")
-'''
-
-'''
-'''
-'''
 BACKUP PLASMA CONFIG FILES
 '''
 '''
