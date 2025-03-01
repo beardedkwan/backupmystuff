@@ -204,10 +204,31 @@ PUSH TO GITHUB REPOSITORY
 config = parse_config_file()
 
 if config:
+    remote_name = config["remote_name"]
+    remote_url = config["remote_url"]
+
     # Initialize Git repository if it doesn't already exist
-    print(backups_main_path)
-    print(os.path.exists(os.path.join(backups_main_path, ".git")))
     if not os.path.exists(f"{backups_main_path}/.git"):
         subprocess.run(["git", "init"], cwd=backups_main_path)
     else:
         print("Git repository already exists.")
+
+    # Add and commit changes
+    subprocess.run(["git", "add", "."], cwd=backups_main_path)
+    subprocess.run(["git", "commit", "-m", "backupmystuff.py automated update"], cwd=backups_main_path)
+
+    # Setup remote repository
+    try:
+        subprocess.run(["git", "remote", "add", remote_name, remote_url], cwd=backups_main_path, check=True)
+
+        print(f"Added remote repository: {remote_url}")
+    except subprocess.CalledProcessError:
+        print("Remote repository already exists.")
+
+    # Push to GitHub
+    try:
+        subprocess.run(["git", "push", "-u", remote_name, "master", "--force"], cwd=backups_main_path, check=True)
+
+        print("Pushed changes to GitHub.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error pushing to GitHub: {e}")
