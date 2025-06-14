@@ -82,6 +82,7 @@ if colors_path.exists():
         shutil.copy(color_src, str(colors_mangohud_backup_path))
 
     readme_content.append("\nCOLORS:\ncolor-schemes directory: /home/user/.local/share/color-schemes\nMove backed up color files to this directory on your machine.\n")
+    readme_content.append("\nPlasma panel color configuration: If the plasma theme \"follows color scheme\", the desktop panel color is governed by the Window color set, Normal Background value. ([Colors:window] BackgroundNormal)\n")
 
 # Build readme file
 if len(readme_content) > 0:
