@@ -3,6 +3,7 @@ import getpass
 import shutil
 import os
 import subprocess
+from datetime import datetime
 
 # CONSTANTS
 # Get logged in user for directory paths
@@ -56,19 +57,23 @@ if not mangohud_backup_path.exists():
         print(f"Error creating directory: {e}")
 
 # Get list of plasma cfg filenames from .config directory
-cfg_path = Path(backups_main_path)
+cfg_path = Path(f"/home/{user}/.config")
 files = [file.name for file in cfg_path.iterdir() if file.is_file() and "plasma" in file.name]
 
 # Plasma backup readme content
 readme_content = []
+time_now = datetime.now().strftime("%d %b %Y @ %H:%M:%S").upper()
+readme_content.append(f"LAST BACKUP: {time_now}\n")
 
 # Readme for .config files
-readme_content.append(f"Config files in the main directory (.backups/plasma/) go in: /home/user/.config/\n")
+readme_content.append(f"\nCONFIG:\nPlasma config directory: /home/user/.config/\nMove backed up config files to this directory on your machine.\n")
 
 # BACKUP .CONFIG FILES
+config_backup_path = Path(f"{str(mangohud_backup_path)}/config")
+config_backup_path.mkdir(parents = True, exist_ok = True)
 for file in files:
     src = f"{str(cfg_path)}/{file}"
-    shutil.copy(src, str(mangohud_backup_path))
+    shutil.copy(src, str(config_backup_path))
 
 # BACKUP PLASMA COLORS
 colors_path = Path(f"/home/{user}/.local/share/color-schemes")
@@ -83,6 +88,15 @@ if colors_path.exists():
 
     readme_content.append("\nCOLORS:\ncolor-schemes directory: /home/user/.local/share/color-schemes\nMove backed up color files to this directory on your machine.\n")
     readme_content.append("\nPlasma panel color configuration: If the plasma theme \"follows color scheme\", the desktop panel color is governed by the Window color set, Normal Background value. ([Colors:window] BackgroundNormal)\n")
+
+# BACKUP PLASMA LOCAL DATA
+local_plasma_path = Path(f"/home/{user}/.local/share/plasma")
+if local_plasma_path.exists():
+    local_backup_path = Path(f"{str(mangohud_backup_path)}/local")
+
+    shutil.copytree(local_plasma_path, local_backup_path, dirs_exist_ok = True)
+
+    readme_content.append("\nLOCAL:\nPlasma local data directory: /home/user/.local/share/plasma\nMove backed up plasma local directories/files to this directory on your machine.\n")
 
 # Build readme file
 if len(readme_content) > 0:
